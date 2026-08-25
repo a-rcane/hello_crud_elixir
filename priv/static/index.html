@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Elixir Task Orchestrator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0b0f19;
+            --bg-card: #151c2c;
+            --bg-card-hover: #1e293b;
+            --border-color: #273549;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --accent: #8b5cf6;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            padding: 40px 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 900px;
+        }
+
+        /* Header styling */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 20px;
+        }
+
+        h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #a5b4fc, #818cf8, #6366f1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* Stats Panel */
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px;
+            text-align: center;
+            transition: transform 0.2s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+        }
+
+        .stat-label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 6px;
+        }
+
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        /* Main split-screen layout */
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 30px;
+        }
+
+        @media (min-width: 768px) {
+            .dashboard {
+                grid-template-columns: 350px 1fr;
+            }
+        }
+
+        /* Form Card */
+        .form-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 24px;
+            height: fit-content;
+            position: sticky;
+            top: 20px;
+        }
+
+        .form-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: var(--text-main);
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        label {
+            display: block;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+
+        input[type="text"],
+        textarea,
+        select {
+            width: 100%;
+            padding: 10px 14px;
+            background: #0b0f19;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-main);
+            font-size: 0.95rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input[type="text"]:focus,
+        textarea:focus,
+        select:focus {
+            border-color: var(--primary);
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+        }
+
+        .btn:hover {
+            background: var(--primary-hover);
+        }
+
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        /* Task Items Card list */
+        .task-list-section {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .task-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 20px;
+            display: flex;
+            gap: 16px;
+            align-items: flex-start;
+            position: relative;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .task-card:hover {
+            border-color: var(--text-muted);
+            background: var(--bg-card-hover);
+        }
+
+        .task-card.completed {
+            opacity: 0.65;
+        }
+
+        .task-card.completed .task-title {
+            text-decoration: line-through;
+            color: var(--text-muted);
+        }
+
+        /* Checkbox design */
+        .checkbox-container {
+            display: flex;
+            align-items: center;
+            margin-top: 4px;
+        }
+
+        .task-checkbox {
+            width: 20px;
+            height: 20px;
+            border-radius: 6px;
+            accent-color: var(--success);
+            cursor: pointer;
+        }
+
+        .task-details {
+            flex: 1;
+        }
+
+        .task-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+            gap: 10px;
+        }
+
+        .task-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .task-desc {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+            white-space: pre-wrap;
+        }
+
+        /* Badge indicators */
+        .badge {
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 100px;
+            text-transform: uppercase;
+        }
+
+        .badge-high {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--danger);
+        }
+
+        .badge-medium {
+            background: rgba(245, 158, 11, 0.2);
+            color: var(--warning);
+        }
+
+        .badge-low {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--success);
+        }
+
+        .badge-completed {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--success);
+        }
+
+        .badge-pending {
+            background: rgba(99, 102, 241, 0.2);
+            color: var(--primary);
+        }
+
+        /* Action buttons */
+        .task-actions {
+            display: flex;
+            gap: 8px;
+            align-self: flex-start;
+        }
+
+        .action-btn {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-muted);
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .action-btn.edit-btn:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .action-btn.delete-btn:hover {
+            border-color: var(--danger);
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-muted);
+            border: 2px dashed var(--border-color);
+            border-radius: 14px;
+        }
+
+        /* Toast notification */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: var(--bg-card);
+            border: 1px solid var(--primary);
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 500;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s;
+        }
+
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <header>
+            <div>
+                <h1>Elixir Task Orchestrator</h1>
+                <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 4px;">Basic CRUD Application powered
+                    by an in-memory OTP Agent</p>
+            </div>
+        </header>
+
+        <!-- Stats -->
+        <div class="stats-container">
+            <div class="stat-card">
+                <div class="stat-label">Total Tasks</div>
+                <div id="statTotal" class="stat-value">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Pending</div>
+                <div id="statPending" class="stat-value">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Completed</div>
+                <div id="statCompleted" class="stat-value">0</div>
+            </div>
+        </div>
+
+        <!-- Main Section -->
+        <div class="dashboard">
+            <!-- Input Panel -->
+            <div class="form-card">
+                <h2 id="formHeader" class="form-title">Create New Task</h2>
+                <form id="taskForm" onsubmit="handleFormSubmit(event)">
+                    <input type="hidden" id="taskId">
+                    <div class="form-group">
+                        <label for="taskTitle">Title</label>
+                        <input type="text" id="taskTitle" required placeholder="Build Elixir supervisor...">
+                    </div>
+                    <div class="form-group">
+                        <label for="taskDesc">Description</label>
+                        <textarea id="taskDesc" placeholder="Enter details or notes..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="taskPriority">Priority</label>
+                        <select id="taskPriority">
+                            <option value="low">Low</option>
+                            <option value="medium" selected>Medium</option>
+                            <option value="high">High</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="formCompletedGroup" style="display: none; align-items: center; gap: 8px;">
+                        <input type="checkbox" id="taskCompleted" style="width: 18px; height: 18px; accent-color: var(--success); cursor: pointer;">
+                        <label for="taskCompleted" style="margin-bottom: 0; cursor: pointer;">Mark as Completed</label>
+                    </div>
+                    <button type="submit" id="submitBtn" class="btn">Create Task</button>
+                    <button type="button" id="cancelEditBtn" class="btn"
+                        style="background: transparent; border: 1px solid var(--border-color); margin-top: 8px; display: none;"
+                        onclick="resetForm()">Cancel Edit</button>
+                </form>
+            </div>
+
+            <!-- Tasks List -->
+            <div id="taskList" class="task-list-section">
+                <!-- Dynamic loading -->
+                <div class="empty-state">
+                    Loading tasks from Elixir node...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast">Action completed successfully</div>
+
+    <script>
+        let allTasks = [];
+
+        // On page load, fetch existing tasks
+        document.addEventListener("DOMContentLoaded", fetchTasks);
+
+        // Toast Manager
+        function showToast(message) {
+            const toast = document.getElementById("toast");
+            toast.innerText = message;
+            toast.classList.add("show");
+            setTimeout(() => {
+                toast.classList.remove("show");
+            }, 3000);
+        }
+
+        // Read: Fetch tasks from API
+        async function fetchTasks() {
+            try {
+                const response = await fetch("/api/tasks");
+                if (!response.ok) throw new Error("Could not retrieve tasks");
+                allTasks = await response.json();
+                renderTasks();
+            } catch (err) {
+                console.error(err);
+                showToast("Error fetching tasks");
+            }
+        }
+
+        // Render helper
+        function renderTasks() {
+            const listEl = document.getElementById("taskList");
+
+            // Update statistics
+            const total = allTasks.length;
+            const completed = allTasks.filter(t => t.completed).length;
+            const pending = total - completed;
+
+            document.getElementById("statTotal").innerText = total;
+            document.getElementById("statPending").innerText = pending;
+            document.getElementById("statCompleted").innerText = completed;
+
+            if (total === 0) {
+                listEl.innerHTML = `
+          <div class="empty-state">
+            <h3>No tasks yet</h3>
+            <p style="font-size: 0.9rem; margin-top: 4px;">Use the form to create your first dynamic task!</p>
+          </div>
+        `;
+                return;
+            }
+
+            listEl.innerHTML = allTasks.map(task => `
+        <div class="task-card ${task.completed ? 'completed' : ''}" id="task-${task.id}">
+          <div class="checkbox-container">
+            <input type="checkbox" 
+                   class="task-checkbox" 
+                   ${task.completed ? 'checked' : ''} 
+                   onclick="toggleTask('${task.id}', ${task.completed})">
+          </div>
+          <div class="task-details">
+            <div class="task-header">
+              <span class="task-title">${escapeHTML(task.title)}</span>
+              <div>
+                <span class="badge badge-${task.priority}">${task.priority}</span>
+                <span class="badge badge-${task.completed ? 'completed' : 'pending'}">${task.completed ? 'Completed' : 'Pending'}</span>
+              </div>
+            </div>
+            <p class="task-desc">${escapeHTML(task.description || 'No description provided')}</p>
+            <div class="task-actions">
+              <button class="action-btn edit-btn" onclick="startEdit('${task.id}')">Edit</button>
+              <button class="action-btn delete-btn" onclick="deleteTask('${task.id}')">Delete</button>
+            </div>
+          </div>
+        </div>
+      `).join('');
+        }
+
+        // Create & Update handler
+        async function handleFormSubmit(e) {
+            e.preventDefault();
+            const id = document.getElementById("taskId").value;
+            const title = document.getElementById("taskTitle").value.trim();
+            const description = document.getElementById("taskDesc").value.trim();
+            const priority = document.getElementById("taskPriority").value;
+
+            const payload = { title, description, priority };
+            if (id) {
+                payload.completed = document.getElementById("taskCompleted").checked;
+            }
+
+            try {
+                if (id) {
+                    // UPDATE
+                    const response = await fetch(`/api/tasks/${id}`, {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(payload)
+                    });
+                    if (!response.ok) throw new Error();
+                    showToast("Task updated successfully!");
+                } else {
+                    // CREATE
+                    const response = await fetch("/api/tasks", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(payload)
+                    });
+                    if (!response.ok) throw new Error();
+                    showToast("Task created successfully!");
+                }
+                resetForm();
+                fetchTasks();
+            } catch (err) {
+                showToast("Action failed");
+            }
+        }
+
+        // Toggle complete
+        async function toggleTask(id, currentStatus) {
+            try {
+                const response = await fetch(`/api/tasks/${id}`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ completed: !currentStatus })
+                });
+                if (!response.ok) throw new Error();
+                showToast(!currentStatus ? "Task marked completed!" : "Task marked active");
+                fetchTasks();
+            } catch (err) {
+                showToast("Failed to update status");
+            }
+        }
+
+        // Delete: Remove task
+        async function deleteTask(id) {
+            if (!confirm("Are you sure you want to delete this task?")) return;
+
+            try {
+                const response = await fetch(`/api/tasks/${id}`, {
+                    method: "DELETE"
+                });
+                if (!response.ok) throw new Error();
+                showToast("Task deleted");
+                fetchTasks();
+            } catch (err) {
+                showToast("Failed to delete task");
+            }
+        }
+
+        // Populate form to edit task
+        function startEdit(id) {
+            const task = allTasks.find(t => t.id === id);
+            if (!task) return;
+
+            document.getElementById("taskId").value = task.id;
+            document.getElementById("taskTitle").value = task.title;
+            document.getElementById("taskDesc").value = task.description || '';
+            document.getElementById("taskPriority").value = task.priority;
+
+            document.getElementById("formCompletedGroup").style.display = "flex";
+            document.getElementById("taskCompleted").checked = task.completed;
+
+            document.getElementById("formHeader").innerText = "Edit Task";
+            document.getElementById("submitBtn").innerText = "Save Changes";
+            document.getElementById("cancelEditBtn").style.display = "block";
+        }
+
+        function resetForm() {
+            document.getElementById("taskId").value = "";
+            document.getElementById("taskForm").reset();
+            document.getElementById("formCompletedGroup").style.display = "none";
+            document.getElementById("taskCompleted").checked = false;
+            document.getElementById("formHeader").innerText = "Create New Task";
+            document.getElementById("submitBtn").innerText = "Create Task";
+            document.getElementById("cancelEditBtn").style.display = "none";
+        }
+
+        function escapeHTML(str) {
+            return str.replace(/[&<>'"]/g,
+                tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+            );
+        }
+    </script>
+</body>
+
+</html>
